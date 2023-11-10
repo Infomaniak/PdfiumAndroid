@@ -44,7 +44,7 @@ android {
         minSdkVersion 19
         targetSdk 31
         versionCode 1
-        versionName "1.9.2.2"
+        versionName ext.PUBLISH_VERSION
 
         buildConfigField("String", "LIBRARY_VERSION_NAME", "\"${defaultConfig.versionName}\"")
 
@@ -77,10 +77,16 @@ afterEvaluate {
         publications {
             release(MavenPublication) {
                 from components.findByName('release')
-                groupId = 'com.github.infomaniak'
-                artifactId = 'pdfiumandroid'
-                version = '1.9.2.2'
+                groupId = ext.PUBLISH_GROUP_ID
+                artifactId = ext.PUBLISH_ARTIFACT_ID
+                version = ext.PUBLISH_VERSION
             }
         }
     }
+}
+
+ext {
+    PUBLISH_GROUP_ID = "com.github.infomaniak"
+    PUBLISH_VERSION = "1.9.4"
+    PUBLISH_ARTIFACT_ID = "pdfmiumandroid"
 }
