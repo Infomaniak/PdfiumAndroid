@@ -13,9 +13,21 @@ buildscript {
 apply plugin: 'maven-publish'
 apply plugin: 'com.android.library'
 
+ext {
+    tools = [
+            minSdk      : 21,
+            targetSdk   : 31,
+            compileSdk  : 31,
+            ndkVersion  : '26.1.10909125',
+            groupID: 'com.github.infomaniak',
+            versionName: '1.9.4',
+            artifactID: 'pdfiumandroid'
+    ]
+}
+
 android {
-    compileSdk 31
-    ndkVersion "26.1.10909125"
+    compileSdk tools.compileSdk
+    ndkVersion tools.ndkVersion
 
     externalNativeBuild {
         ndkBuild {
@@ -41,10 +53,10 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 19
-        targetSdk 31
+        minSdkVersion tools.minSdk
+        targetSdk tools.targetSdk
         versionCode 1
-        versionName ext.PUBLISH_VERSION
+        versionName tools.versionName
 
         buildConfigField("String", "LIBRARY_VERSION_NAME", "\"${defaultConfig.versionName}\"")
 
@@ -77,16 +89,10 @@ afterEvaluate {
         publications {
             release(MavenPublication) {
                 from components.findByName('release')
-                groupId = ext.PUBLISH_GROUP_ID
-                artifactId = ext.PUBLISH_ARTIFACT_ID
-                version = ext.PUBLISH_VERSION
+                groupId = tools.groupID
+                artifactId = tools.artifactID
+                version = tools.versionName
             }
         }
     }
-}
-
-ext {
-    PUBLISH_GROUP_ID = "com.github.infomaniak"
-    PUBLISH_VERSION = "1.9.4"
-    PUBLISH_ARTIFACT_ID = "pdfmiumandroid"
 }
