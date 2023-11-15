@@ -1,25 +1,61 @@
 buildscript {
     repositories {
         google()
+        mavenLocal()
         mavenCentral()
     }
 
     dependencies {
         classpath 'com.android.tools.build:gradle:7.2.0'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
     }
 }
-
+apply plugin: 'maven-publish'
 apply plugin: 'com.android.library'
 
+ext {
+    tools = [
+            groupID: 'com.github.infomaniak',
+            versionName: '1.9.4',
+            artifactID: 'pdfiumandroid'
+    ]
+}
+
 android {
-    compileSdkVersion 31
+    compileSdk 31
+    ndkVersion "26.1.10909125"
+
+    externalNativeBuild {
+        ndkBuild {
+            path "src/main/jni/Android.mk"
+        }
+    }
+
+    packagingOptions {
+        pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
+        pickFirst 'lib/x86_64/libc++_shared.so'
+        pickFirst 'lib/x86/libc++_shared.so'
+
+        pickFirst 'lib/armeabi-v7a/libjniPdfium.so'
+        pickFirst 'lib/arm64-v8a/libjniPdfium.so'
+        pickFirst 'lib/x86_64/libjniPdfium.so'
+        pickFirst 'lib/x86/libjniPdfium.so'
+
+        pickFirst 'lib/armeabi-v7a/libmodpdfium.so'
+        pickFirst 'lib/arm64-v8a/libmodpdfium.so'
+        pickFirst 'lib/x86_64/libmodpdfium.so'
+        pickFirst 'lib/x86/libmodpdfium.so'
+    }
 
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 31
+        minSdkVersion 21
+        targetSdk 31
         versionCode 1
-        versionName "1.9.2"
-        buildConfigField 'String', 'VERSION_NAME', "\"${defaultConfig.versionName}\""
+        versionName tools.versionName
+
+        buildConfigField("String", "LIBRARY_VERSION_NAME", "\"${defaultConfig.versionName}\"")
+
     }
     buildTypes {
         release {
@@ -28,28 +64,31 @@ android {
         }
     }
 
-    sourceSets{
-        main {
-            jni.srcDirs = []
-            jniLibs.srcDir 'src/main/libs'
-        }
+    buildFeatures {
+        buildConfig = true
     }
 }
 
 repositories {
     google()
+    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.collection:collection:1.2.0'
 }
 
-// Maven Publishing
-ext {
-    PUBLISH_GROUP_ID = 'com.github.mhiew'
-    PUBLISH_VERSION = "1.9.2"
-    PUBLISH_ARTIFACT_ID = 'pdfium-android'
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.findByName('release')
+                groupId = tools.groupID
+                artifactId = tools.artifactID
+                version = tools.versionName
+            }
+        }
+    }
 }
-
-apply from: "${rootProject.projectDir}/publish-mavencentral.gradle"
