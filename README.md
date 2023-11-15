@@ -3,7 +3,7 @@ Uses pdfium library [from AOSP](https://android.googlesource.com/platform/extern
 
 The demo app (for not modified lib) is [here](https://github.com/mshockwave/PdfiumAndroid-Demo-App)
 
-Forked for use with [AndroidPdfViewer](https://github.com/infomaniak/AndroidPdfViewer) project.
+Forked for use with [AndroidPdfViewer](https://github.com/Infomaniak/android-pdfview/) project.
 
 API is highly compatible with original version, only additional methods were created.
 
@@ -15,6 +15,7 @@ It will be used with the forked [AndroidPdFViewer](https://github.com/infomaniak
 
 ## What's new in 1.9.4
 * Jumping from 1.9.2 to 1.9.4 because jitpack has an issue to refresh an existing artifact with the same name
+* Bump APP_PLATFORM from 14 to 21
 * Functionally the same as 1.9.2
 * Fix an issue when generating aar library
 * Add the possibility to generate local aar library using Maven Local (./gradlew publishToMavenLocal)
