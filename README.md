@@ -11,7 +11,7 @@ API is highly compatible with original version, only additional methods were cre
 
 The purpose is to remove old support libraries so we no longer need to use jetifier.
 
-It will be used with the forked [AndroidPdFViewer](https://github.com/infomaniak/AndroidPdfViewer)
+It will be used with the forked [AndroidPdFViewer](https://github.com/Infomaniak/android-pdfview/)
 
 ## What's new in 1.9.4
 * Jumping from 1.9.2 to 1.9.4 because jitpack has an issue to refresh an existing artifact with the same name
