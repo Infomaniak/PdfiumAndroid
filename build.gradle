@@ -15,10 +15,6 @@ apply plugin: 'com.android.library'
 
 ext {
     tools = [
-            minSdk      : 21,
-            targetSdk   : 31,
-            compileSdk  : 31,
-            ndkVersion  : '26.1.10909125',
             groupID: 'com.github.infomaniak',
             versionName: '1.9.4',
             artifactID: 'pdfiumandroid'
@@ -26,8 +22,8 @@ ext {
 }
 
 android {
-    compileSdk tools.compileSdk
-    ndkVersion tools.ndkVersion
+    compileSdk 31
+    ndkVersion "26.1.10909125"
 
     externalNativeBuild {
         ndkBuild {
@@ -53,8 +49,8 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion tools.minSdk
-        targetSdk tools.targetSdk
+        minSdkVersion 21
+        targetSdk 31
         versionCode 1
         versionName tools.versionName
 
