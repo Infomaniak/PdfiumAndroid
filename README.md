@@ -13,36 +13,7 @@ The purpose is to remove old support libraries so we no longer need to use jetif
 
 It will be used with the forked [AndroidPdFViewer](https://github.com/Infomaniak/android-pdfview/)
 
-## What's new in 1.9.5
-* Upgrade build tools to 8.1.3
-* Upgrade gradle to 8.0
-* Delete package from AndroidManifest.xml and add namespace to build.gradle
-* Upgrade androidx.collection to 1.3.0
-
-## What's new in 1.9.4
-* Jumping from 1.9.2 to 1.9.4 because jitpack has an issue to refresh an existing artifact with the same name
-* Bump APP_PLATFORM from 14 to 21
-* Functionally the same as 1.9.2
-* Fix an issue when generating aar library
-* Add the possibility to generate local aar library using Maven Local (./gradlew publishToMavenLocal)
-
-## What's new in 1.9.2
-This is functionally the same as 1.9.1 just fixing some documentation on maven central
-
-## What's new in 1.9.1
-* Update Gradle plugins and configurations
-* Update compile sdk to 31
-* Change minimum SDK to 19
-* Remove support-v4 library
-* Drop support for mips
-
-## What's new in 1.9.0?
-* Updated Pdfium library to 7.1.2_r36
-* Changed `gnustl_static` to `c++_shared`
-* Update Gradle plugins
-* Update compile SDK and support library to 26
-* Change minimum SDK to 14
-* Add support for mips64
+Link to the [changelog](https://github.com/Infomaniak/PdfiumAndroid/blob/master/CHANGELOG.md)
 
 ## Installation
 Add to _build.gradle_:
