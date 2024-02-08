@@ -1,3 +1,6 @@
+## What's new in 1.9.6
+ * Edit jitpack.yml file to fix a Jitpack CI issue
+
 ## What's new in 1.9.5
  * Upgrade build tools to 8.1.3
  * Upgrade gradle to 8.0
