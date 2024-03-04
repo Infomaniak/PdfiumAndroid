@@ -1,4 +1,4 @@
-# Pdfium Android binding with Bitmap rendering
+# Pdfium Android binding with Bitmap rendering test
 Uses pdfium library [from AOSP](https://android.googlesource.com/platform/external/pdfium/)
 
 The demo app (for not modified lib) is [here](https://github.com/mshockwave/PdfiumAndroid-Demo-App)
