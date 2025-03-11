@@ -122,7 +122,6 @@ public class PdfiumCore {
     /** Context needed to get screen density */
     public PdfiumCore(Context ctx) {
         mCurrentDpi = ctx.getResources().getDisplayMetrics().densityDpi;
-        Log.d(TAG, "Starting PdfiumAndroid " + BuildConfig.LIBRARY_VERSION_NAME);
     }
 
     /** Create new document from file */
