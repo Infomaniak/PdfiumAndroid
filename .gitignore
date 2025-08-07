@@ -1,4 +1,5 @@
 src/main/libs
+src/main/jniLibs
 src/main/obj
 
 *.iml
