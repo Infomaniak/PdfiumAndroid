@@ -6,7 +6,7 @@ buildscript {
         set("libTargetSdk", 34)
 
         set("libGroupId", "com.github.infomaniak")
-        set("libVersionName", "1.9.7")
+        set("libVersionName", "1.9.8")
         set("libArtifactId", "pdfiumandroid")
         set("ndkVersion", "28.2.13676358")
         set("javaVersion", JavaVersion.VERSION_17)
@@ -33,32 +33,9 @@ android {
     compileSdk = libCompileSdk
     ndkVersion = ndkVersion
 
-    externalNativeBuild {
-        ndkBuild {
-            path = File("src/main/jni/Android.mk")
-        }
-    }
-
-    packaging {
-        resources {
-            jniLibs.pickFirsts.addAll(
-                listOf(
-                    "lib/armeabi-v7a/libc++_shared.so",
-                    "lib/arm64-v8a/libc++_shared.so",
-                    "lib/x86_64/libc++_shared.so",
-                    "lib/x86/libc++_shared.so",
-
-                    "lib/armeabi-v7a/libjniPdfium.so",
-                    "lib/arm64-v8a/libjniPdfium.so",
-                    "lib/x86_64/libjniPdfium.so",
-                    "lib/x86/libjniPdfium.so",
-
-                    "lib/armeabi-v7a/libmodpdfium.so",
-                    "lib/arm64-v8a/libmodpdfium.so",
-                    "lib/x86_64/libmodpdfium.so",
-                    "lib/x86/libmodpdfium.so"
-                )
-            )
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDir("src/main/jni/lib")
         }
     }
 
