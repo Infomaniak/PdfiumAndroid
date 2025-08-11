@@ -1,3 +1,7 @@
+## What's new in 1.9.8
+* Update project
+* Update libraries to 16kb pages
+
 ## What's new in 1.9.6
  * Edit jitpack.yml file to fix a Jitpack CI issue
 
