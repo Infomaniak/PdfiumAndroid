@@ -6,7 +6,7 @@ buildscript {
         set("libTargetSdk", 34)
 
         set("libGroupId", "com.github.infomaniak")
-        set("libVersionName", "1.9.7")
+        set("libVersionName", "1.9.8")
         set("libArtifactId", "pdfiumandroid")
         set("ndkVersion", "28.2.13676358")
         set("javaVersion", JavaVersion.VERSION_17)
