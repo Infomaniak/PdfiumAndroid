@@ -58,7 +58,6 @@ build_libpng() {
     done
 }
 
-
 build_libfreetype2() {
     FREETYPE_VERSION=2.13.3
     rm -fr freetype-${FREETYPE_VERSION}.tar.gz freetype-${FREETYPE_VERSION}
@@ -98,7 +97,8 @@ build_pdfiumAndroid() {
             -DCMAKE_ANDROID_ARCH_ABI="${ABI}" \
             -DANDROID_ABI="${ABI}" \
             -DANDROID_PLATFORM=android-26 \
-            -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON
+            -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON \
+            -DANDROID_STL=c++_shared
         check_command_result "configuring pdfiumAndroid"
 
         cmake --build ${BUILD_ROOT}/pdfiumAndroid/"${ABI}"/ -j10
@@ -124,7 +124,6 @@ deploy_to() {
         cp -fv src/main/jni/lib/"${ABI}"/libmodpng.so "${target_folder}"/"${ABI}"/
         cp -fv src/main/jni/lib/"${ABI}"/libmodft2.so "${target_folder}"/"${ABI}"/
         cp -fv src/main/jni/lib/"${ABI}"/libmodpdfium.so "${target_folder}"/"${ABI}"/
-        cp -fv src/main/jni/lib/"${ABI}"/libc++_shared.so "${target_folder}"/"${ABI}"/
         cp -fv builddir/pdfiumAndroid/"${ABI}"/libjniPdfium.so "${target_folder}"/"${ABI}"/
     done
 }

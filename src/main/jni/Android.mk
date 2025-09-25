@@ -10,14 +10,6 @@ LOCAL_SRC_FILES := $(LOCAL_PATH)/lib/$(ARCH_PATH)/libmodpdfium.so
 
 include $(PREBUILT_SHARED_LIBRARY)
 
-#c++_shared
-include $(CLEAR_VARS)
-LOCAL_MODULE := libmodc++_shared
-
-LOCAL_SRC_FILES := $(LOCAL_PATH)/lib/$(ARCH_PATH)/libc++_shared.so
-
-include $(PREBUILT_SHARED_LIBRARY)
-
 #libmodft2
 include $(CLEAR_VARS)
 LOCAL_MODULE := libmodft2

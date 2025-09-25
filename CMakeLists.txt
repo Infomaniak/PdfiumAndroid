@@ -31,7 +31,6 @@ target_link_libraries(jniPdfium
         PRIVATE ${CMAKE_SOURCE_DIR}/src/main/jni/lib/${ANDROID_ABI}/libmodft2.so
         PRIVATE ${CMAKE_SOURCE_DIR}/src/main/jni/lib/${ANDROID_ABI}/libmodpdfium.so
         PRIVATE ${CMAKE_SOURCE_DIR}/src/main/jni/lib/${ANDROID_ABI}/libmodpng.so
-        PRIVATE ${CMAKE_SOURCE_DIR}/src/main/jni/lib/${ANDROID_ABI}/libc++_shared.so
 )
 
 # Specify additional compile options if required
