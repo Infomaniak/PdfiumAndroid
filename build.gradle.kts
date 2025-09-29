@@ -20,12 +20,10 @@ plugins {
 
 val libMinSdk: Int by rootProject.extra
 val libCompileSdk: Int by rootProject.extra
-val libTargetSdk: Int by rootProject.extra
 
 val libGroupId: String by rootProject.extra
 val libVersionName: String by rootProject.extra
 val libArtifactId: String by rootProject.extra
-val ndkVersion: String by rootProject.extra
 val javaVersion: JavaVersion by rootProject.extra
 
 android {
@@ -41,7 +39,6 @@ android {
 
     defaultConfig {
         minSdk = libMinSdk
-        targetSdk = libTargetSdk
     }
 
     buildTypes {
