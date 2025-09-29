@@ -1,6 +1,6 @@
 [versions]
-agp = "8.6.1"
-collection = "1.3.0"
+agp = "8.13.0"
+collection = "1.5.0"
 
 [libraries]
 collection = { module = "androidx.collection:collection", version.ref = "collection" }
