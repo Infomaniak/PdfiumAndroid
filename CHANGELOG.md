@@ -1,3 +1,7 @@
+## What's new in 1.9.9
+* Update project
+* Force the use of libc++_shared.so from the NDK instead of the local copy
+
 ## What's new in 1.9.8
 * Update project
 * Update libraries to 16kb pages
