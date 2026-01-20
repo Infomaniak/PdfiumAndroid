@@ -19,6 +19,7 @@ package com.shockwave.pdfium;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.graphics.PointF;
 import android.graphics.RectF;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
@@ -107,6 +108,8 @@ public class PdfiumCore {
     private native Point nativePageCoordsToDevice(long pagePtr, int startX, int startY, int sizeX,
                                                   int sizeY, int rotate, double pageX, double pageY);
 
+    private native PointF nativeDeviceCoordsToPage(long pagePtr, int startX, int startY, int sizeX,
+                                                   int sizeY, int rotate, int deviceX, int deviceY);
 
     /* synchronize native methods */
     private static final Object lock = new Object();
@@ -131,17 +134,23 @@ public class PdfiumCore {
     }
 
 
-    /** Context needed to get screen density */
+    /**
+     * Context needed to get screen density
+     */
     public PdfiumCore(Context ctx) {
         mCurrentDpi = ctx.getResources().getDisplayMetrics().densityDpi;
     }
 
-    /** Create new document from file */
+    /**
+     * Create new document from file
+     */
     public PdfDocument newDocument(ParcelFileDescriptor fd) throws IOException {
         return newDocument(fd, null);
     }
 
-    /** Create new document from file with password */
+    /**
+     * Create new document from file with password
+     */
     public PdfDocument newDocument(ParcelFileDescriptor fd, String password) throws IOException {
         PdfDocument document = new PdfDocument();
         document.parcelFileDescriptor = fd;
@@ -152,12 +161,16 @@ public class PdfiumCore {
         return document;
     }
 
-    /** Create new document from bytearray */
+    /**
+     * Create new document from bytearray
+     */
     public PdfDocument newDocument(byte[] data) throws IOException {
         return newDocument(data, null);
     }
 
-    /** Create new document from bytearray with password */
+    /**
+     * Create new document from bytearray with password
+     */
     public PdfDocument newDocument(byte[] data, String password) throws IOException {
         PdfDocument document = new PdfDocument();
         synchronized (lock) {
@@ -166,14 +179,18 @@ public class PdfiumCore {
         return document;
     }
 
-    /** Get total numer of pages in document */
+    /**
+     * Get total numer of pages in document
+     */
     public int getPageCount(PdfDocument doc) {
         synchronized (lock) {
             return nativeGetPageCount(doc.mNativeDocPtr);
         }
     }
 
-    /** Open page and store native pointer in {@link PdfDocument} */
+    /**
+     * Open page and store native pointer in {@link PdfDocument}
+     */
     public long openPage(PdfDocument doc, int pageIndex) {
         long pagePtr;
         synchronized (lock) {
@@ -184,7 +201,9 @@ public class PdfiumCore {
 
     }
 
-    /** Open range of pages and store native pointers in {@link PdfDocument} */
+    /**
+     * Open range of pages and store native pointers in {@link PdfDocument}
+     */
     public long[] openPage(PdfDocument doc, int fromIndex, int toIndex) {
         long[] pagesPtr;
         synchronized (lock) {
@@ -335,7 +354,9 @@ public class PdfiumCore {
         }
     }
 
-    /** Release native resources and opened file */
+    /**
+     * Release native resources and opened file
+     */
     public void closeDocument(PdfDocument doc) {
         synchronized (lock) {
             for (Integer index : doc.mNativePagesPtr.keySet()) {
@@ -349,14 +370,16 @@ public class PdfiumCore {
                 try {
                     doc.parcelFileDescriptor.close();
                 } catch (IOException e) {
-                /* ignore */
+                    /* ignore */
                 }
                 doc.parcelFileDescriptor = null;
             }
         }
     }
 
-    /** Get metadata for given document */
+    /**
+     * Get metadata for given document
+     */
     public PdfDocument.Meta getDocumentMeta(PdfDocument doc) {
         synchronized (lock) {
             PdfDocument.Meta meta = new PdfDocument.Meta();
@@ -373,7 +396,9 @@ public class PdfiumCore {
         }
     }
 
-    /** Get table of contents (bookmarks) for given document */
+    /**
+     * Get table of contents (bookmarks) for given document
+     */
     public List<PdfDocument.Bookmark> getTableOfContents(PdfDocument doc) {
         synchronized (lock) {
             List<PdfDocument.Bookmark> topLevel = new ArrayList<>();
@@ -403,7 +428,9 @@ public class PdfiumCore {
         }
     }
 
-    /** Get all links from given page */
+    /**
+     * Get all links from given page
+     */
     public List<PdfDocument.Link> getPageLinks(PdfDocument doc, int pageIndex) {
         synchronized (lock) {
             List<PdfDocument.Link> links = new ArrayList<>();
@@ -445,6 +472,47 @@ public class PdfiumCore {
                                        int sizeY, int rotate, double pageX, double pageY) {
         long pagePtr = doc.mNativePagesPtr.get(pageIndex);
         return nativePageCoordsToDevice(pagePtr, startX, startY, sizeX, sizeY, rotate, pageX, pageY);
+    }
+
+    /**
+     * Convert the screen coordinates of a point to page coordinates.
+     * <p>
+     * The page coordinate system has its origin at the left-bottom corner
+     * of the page, with the X-axis on the bottom going to the right, and
+     * the Y-axis on the left side going up.
+     * <p>
+     * NOTE: this coordinate system can be altered when you zoom, scroll,
+     * or rotate a page, however, a point on the page should always have
+     * the same coordinate values in the page coordinate system.
+     * <p>
+     * The device coordinate system is device dependent. For screen device,
+     * its origin is at the left-top corner of the window. However this
+     * origin can be altered by the Windows coordinate transformation
+     * utilities.
+     * <p>
+     * You must make sure the start_x, start_y, size_x, size_y
+     * and rotate parameters have exactly same values as you used in
+     * the FPDF_RenderPage() function call.
+     *
+     * @param doc       pdf document
+     * @param pageIndex index of page
+     * @param startX    Left pixel position of the display area in device coordinates.
+     * @param startY    Top pixel position of the display area in device coordinates.
+     * @param sizeX     Horizontal size (in pixels) for displaying the page.
+     * @param sizeY     Vertical size (in pixels) for displaying the page.
+     * @param rotate    Page orientation:
+     *                  0 (normal)
+     *                  1 (rotated 90 degrees clockwise)
+     *                  2 (rotated 180 degrees)
+     *                  3 (rotated 90 degrees counter-clockwise)
+     * @param deviceX   X value in device coordinates to be converted.
+     * @param deviceY   Y value in device coordinates to be converted.
+     * @return
+     */
+    public PointF mapDeviceCoordsToPage(PdfDocument doc, int pageIndex, int startX, int startY, int sizeX,
+                                        int sizeY, int rotate, int deviceX, int deviceY) {
+        long pagePtr = doc.mNativePagesPtr.get(pageIndex);
+        return nativeDeviceCoordsToPage(pagePtr, startX, startY, sizeX, sizeY, rotate, deviceX, deviceY);
     }
 
     /**
