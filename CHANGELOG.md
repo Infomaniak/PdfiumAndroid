@@ -1,3 +1,6 @@
+## What's new in 1.9.10
+* Re-add wrongly deleted methods after the 16KB pages update
+
 ## What's new in 1.9.9
 * Update project
 * Force the use of libc++_shared.so from the NDK instead of the local copy
