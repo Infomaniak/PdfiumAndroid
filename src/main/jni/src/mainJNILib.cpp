@@ -32,6 +32,7 @@ using namespace android;
 
 #include <fpdfview.h>
 #include <fpdf_doc.h>
+#include <fpdf_formfill.h>
 #include <string>
 #include <vector>
 
@@ -69,17 +70,62 @@ class DocumentFile {
 
     public:
     FPDF_DOCUMENT pdfDocument = NULL;
+    FPDF_FORMHANDLE formHandle = NULL;
     size_t fileSize;
 
     DocumentFile() { initLibraryIfNeed(); }
     ~DocumentFile();
+    
+    void initFormFill();
+    void exitFormFill();
 };
 DocumentFile::~DocumentFile(){
+    exitFormFill();
     if(pdfDocument != NULL){
         FPDF_CloseDocument(pdfDocument);
     }
 
     destroyLibraryIfNeed();
+}
+
+void DocumentFile::initFormFill(){
+    if(pdfDocument == NULL || formHandle != NULL){
+        return;
+    }
+    
+    static FPDF_FORMFILLINFO formFillInfo;
+    memset(&formFillInfo, 0, sizeof(FPDF_FORMFILLINFO));
+    formFillInfo.version = 1;
+    // Required callbacks - can be NULL for basic form display
+    formFillInfo.Release = NULL;
+    formFillInfo.FFI_Invalidate = NULL;
+    formFillInfo.FFI_SetCursor = NULL;
+    formFillInfo.FFI_SetTimer = NULL;
+    formFillInfo.FFI_KillTimer = NULL;
+    formFillInfo.FFI_GetLocalTime = NULL;
+    formFillInfo.FFI_OnChange = NULL;
+    formFillInfo.FFI_GetPage = NULL;
+    formFillInfo.FFI_GetCurrentPage = NULL;
+    formFillInfo.FFI_GetRotation = NULL;
+    formFillInfo.FFI_ExecuteNamedAction = NULL;
+    formFillInfo.FFI_SetTextFieldFocus = NULL;
+    formFillInfo.FFI_DoURIAction = NULL;
+    formFillInfo.FFI_DoGoToAction = NULL;
+    
+    formHandle = FPDFDOC_InitFormFillEnvironment(pdfDocument, &formFillInfo);
+    if(formHandle != NULL){
+        LOGD("Form fill environment initialized successfully");
+    } else {
+        LOGD("Failed to initialize form fill environment");
+    }
+}
+
+void DocumentFile::exitFormFill(){
+    if(formHandle != NULL){
+        FPDFDOC_ExitFormFillEnvironment(formHandle);
+        formHandle = NULL;
+        LOGD("Form fill environment destroyed");
+    }
 }
 
 template <class string_type>
@@ -242,6 +288,7 @@ JNI_FUNC(jlong, PdfiumCore, nativeOpenDocument)(JNI_ARGS, jint fd, jstring passw
     }
 
     docFile->pdfDocument = document;
+    docFile->initFormFill();
 
     return reinterpret_cast<jlong>(docFile);
 }
@@ -285,6 +332,7 @@ JNI_FUNC(jlong, PdfiumCore, nativeOpenMemDocument)(JNI_ARGS, jbyteArray data, js
     }
 
     docFile->pdfDocument = document;
+    docFile->initFormFill();
 
     return reinterpret_cast<jlong>(docFile);
 }
@@ -309,6 +357,9 @@ static jlong loadPageInternal(JNIEnv *env, DocumentFile *doc, int pageIndex){
             if (page == NULL) {
                 throw "Loaded page is null";
             }
+            if(doc->formHandle != NULL){
+                FORM_OnAfterLoadPage(page, doc->formHandle);
+            }
             return reinterpret_cast<jlong>(page);
         }else{
             throw "Get page pdf document null";
@@ -324,7 +375,13 @@ static jlong loadPageInternal(JNIEnv *env, DocumentFile *doc, int pageIndex){
     }
 }
 
-static void closePageInternal(jlong pagePtr) { FPDF_ClosePage(reinterpret_cast<FPDF_PAGE>(pagePtr)); }
+static void closePageInternal(jlong pagePtr, DocumentFile *doc) { 
+    FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
+    if(doc != NULL && doc->formHandle != NULL){
+        FORM_OnBeforeClosePage(page, doc->formHandle);
+    }
+    FPDF_ClosePage(page); 
+}
 
 JNI_FUNC(jlong, PdfiumCore, nativeLoadPage)(JNI_ARGS, jlong docPtr, jint pageIndex){
     DocumentFile *doc = reinterpret_cast<DocumentFile*>(docPtr);
@@ -347,13 +404,17 @@ JNI_FUNC(jlongArray, PdfiumCore, nativeLoadPages)(JNI_ARGS, jlong docPtr, jint f
     return javaPages;
 }
 
-JNI_FUNC(void, PdfiumCore, nativeClosePage)(JNI_ARGS, jlong pagePtr){ closePageInternal(pagePtr); }
-JNI_FUNC(void, PdfiumCore, nativeClosePages)(JNI_ARGS, jlongArray pagesPtr){
+JNI_FUNC(void, PdfiumCore, nativeClosePage)(JNI_ARGS, jlong docPtr, jlong pagePtr){ 
+    DocumentFile *doc = reinterpret_cast<DocumentFile*>(docPtr);
+    closePageInternal(pagePtr, doc); 
+}
+JNI_FUNC(void, PdfiumCore, nativeClosePages)(JNI_ARGS, jlong docPtr, jlongArray pagesPtr){
+    DocumentFile *doc = reinterpret_cast<DocumentFile*>(docPtr);
     int length = (int)(env -> GetArrayLength(pagesPtr));
     jlong *pages = env -> GetLongArrayElements(pagesPtr, NULL);
 
     int i;
-    for(i = 0; i < length; i++){ closePageInternal(pages[i]); }
+    for(i = 0; i < length; i++){ closePageInternal(pages[i], doc); }
 }
 
 JNI_FUNC(jint, PdfiumCore, nativeGetPageWidthPixel)(JNI_ARGS, jlong pagePtr, jint dpi){
@@ -400,6 +461,7 @@ JNI_FUNC(jobject, PdfiumCore, nativeGetPageSizeByIndex)(JNI_ARGS, jlong docPtr, 
 }
 
 static void renderPageInternal( FPDF_PAGE page,
+                                FPDF_FORMHANDLE formHandle,
                                 ANativeWindow_Buffer *windowBuffer,
                                 int startX, int startY,
                                 int canvasHorSize, int canvasVerSize,
@@ -439,9 +501,17 @@ static void renderPageInternal( FPDF_PAGE page,
                            startX, startY,
                            drawSizeHor, drawSizeVer,
                            0, flags );
+
+    // Render form fields if form handle is available
+    if(formHandle != NULL && renderAnnot){
+        FPDF_FFLDraw(formHandle, pdfBitmap, page,
+                     startX, startY,
+                     drawSizeHor, drawSizeVer,
+                     0, flags);
+    }
 }
 
-JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject objSurface,
+JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong docPtr, jlong pagePtr, jobject objSurface,
                                              jint dpi, jint startX, jint startY,
                                              jint drawSizeHor, jint drawSizeVer,
                                              jboolean renderAnnot){
@@ -450,6 +520,7 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject ob
         LOGE("native window pointer null");
         return;
     }
+    DocumentFile *doc = reinterpret_cast<DocumentFile*>(docPtr);
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
 
     if(page == NULL || nativeWindow == NULL){
@@ -472,7 +543,7 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject ob
         return;
     }
 
-    renderPageInternal(page, &buffer,
+    renderPageInternal(page, doc->formHandle, &buffer,
                        (int)startX, (int)startY,
                        buffer.width, buffer.height,
                        (int)drawSizeHor, (int)drawSizeVer,
@@ -482,11 +553,11 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPage)(JNI_ARGS, jlong pagePtr, jobject ob
     ANativeWindow_release(nativeWindow);
 }
 
-JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobject bitmap,
+JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong docPtr, jlong pagePtr, jobject bitmap,
                                              jint dpi, jint startX, jint startY,
                                              jint drawSizeHor, jint drawSizeVer,
                                              jboolean renderAnnot){
-
+    DocumentFile *doc = reinterpret_cast<DocumentFile*>(docPtr);
     FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
 
     if(page == NULL || bitmap == NULL){
@@ -560,6 +631,14 @@ JNI_FUNC(void, PdfiumCore, nativeRenderPageBitmap)(JNI_ARGS, jlong pagePtr, jobj
                            startX, startY,
                            (int)drawSizeHor, (int)drawSizeVer,
                            0, flags );
+
+    // Render form fields if form handle is available
+    if(doc->formHandle != NULL && renderAnnot){
+        FPDF_FFLDraw(doc->formHandle, pdfBitmap, page,
+                     startX, startY,
+                     (int)drawSizeHor, (int)drawSizeVer,
+                     0, flags);
+    }
 
     if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
         rgbBitmapTo565(tmp, sourceStride, addr, &info);
