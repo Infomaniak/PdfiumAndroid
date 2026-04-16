@@ -1,3 +1,6 @@
+## What's new in 1.9.11
+* Display forms in the PDF document
+
 ## What's new in 1.9.10
 * Re-add wrongly deleted methods after the 16KB pages update
 
