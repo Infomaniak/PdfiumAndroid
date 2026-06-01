@@ -33,6 +33,7 @@ using namespace android;
 #include <fpdfview.h>
 #include <fpdf_doc.h>
 #include <fpdf_formfill.h>
+#include <fpdf_text.h>
 #include <string>
 #include <vector>
 
@@ -781,6 +782,86 @@ JNI_FUNC(jobject, PdfiumCore, nativePageCoordsToDevice)(JNI_ARGS, jlong pagePtr,
     jclass clazz = env->FindClass("android/graphics/Point");
     jmethodID constructorID = env->GetMethodID(clazz, "<init>", "(II)V");
     return env->NewObject(clazz, constructorID, deviceX, deviceY);
+}
+
+JNI_FUNC(jlong, PdfiumCore, nativeLoadTextPage)(JNI_ARGS, jlong pagePtr) {
+    FPDF_PAGE page = reinterpret_cast<FPDF_PAGE>(pagePtr);
+    if (page == NULL) {
+        jniThrowException(env, "java/lang/IllegalStateException", "Page is not opened");
+        return -1;
+    }
+
+    FPDF_TEXTPAGE textPage = FPDFText_LoadPage(page);
+    if (textPage == NULL) {
+        jniThrowException(env, "java/lang/IllegalStateException", "Unable to load text page");
+        return -1;
+    }
+
+    return reinterpret_cast<jlong>(textPage);
+}
+
+JNI_FUNC(void, PdfiumCore, nativeCloseTextPage)(JNI_ARGS, jlong textPagePtr) {
+    if (textPagePtr == 0) {
+        return;
+    }
+    FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
+    FPDFText_ClosePage(textPage);
+}
+
+JNI_FUNC(jint, PdfiumCore, nativeGetPageTextCount)(JNI_ARGS, jlong textPagePtr) {
+    FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
+    if (textPage == NULL) {
+        return 0;
+    }
+    return (jint) FPDFText_CountChars(textPage);
+}
+
+JNI_FUNC(jstring, PdfiumCore, nativeGetPageText)(JNI_ARGS, jlong textPagePtr, jint startIndex, jint count) {
+    FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
+    if (textPage == NULL || count <= 0) {
+        return env->NewStringUTF("");
+    }
+
+    std::vector<unsigned short> buffer((size_t) count + 1);
+    int copiedChars = FPDFText_GetText(textPage, startIndex, count, buffer.data());
+    if (copiedChars <= 0) {
+        return env->NewStringUTF("");
+    }
+
+    if (buffer[(size_t)copiedChars - 1] == 0) {
+        copiedChars--;
+    }
+
+    return env->NewString(reinterpret_cast<const jchar*>(buffer.data()), copiedChars);
+}
+
+JNI_FUNC(jint, PdfiumCore, nativeGetCharIndexAtCoord)(JNI_ARGS, jlong textPagePtr, jdouble pageX, jdouble pageY,
+                                                      jdouble xTolerance, jdouble yTolerance) {
+    FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
+    if (textPage == NULL) {
+        return -1;
+    }
+    return (jint) FPDFText_GetCharIndexAtPos(textPage, pageX, pageY, xTolerance, yTolerance);
+}
+
+JNI_FUNC(jobject, PdfiumCore, nativeGetCharBox)(JNI_ARGS, jlong textPagePtr, jint charIndex) {
+    FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
+    if (textPage == NULL) {
+        return NULL;
+    }
+
+    double left;
+    double right;
+    double bottom;
+    double top;
+    FPDF_BOOL hasBox = FPDFText_GetCharBox(textPage, charIndex, &left, &right, &bottom, &top);
+    if (!hasBox) {
+        return NULL;
+    }
+
+    jclass clazz = env->FindClass("android/graphics/RectF");
+    jmethodID constructorID = env->GetMethodID(clazz, "<init>", "(FFFF)V");
+    return env->NewObject(clazz, constructorID, (jfloat) left, (jfloat) top, (jfloat) right, (jfloat) bottom);
 }
 
 }//extern C

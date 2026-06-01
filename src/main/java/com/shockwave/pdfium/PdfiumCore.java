@@ -111,6 +111,19 @@ public class PdfiumCore {
     private native PointF nativeDeviceCoordsToPage(long pagePtr, int startX, int startY, int sizeX,
                                                    int sizeY, int rotate, int deviceX, int deviceY);
 
+    private native long nativeLoadTextPage(long pagePtr);
+
+    private native void nativeCloseTextPage(long textPagePtr);
+
+    private native int nativeGetPageTextCount(long textPagePtr);
+
+    private native String nativeGetPageText(long textPagePtr, int startIndex, int count);
+
+    private native int nativeGetCharIndexAtCoord(long textPagePtr, double pageX, double pageY,
+                                                 double xTolerance, double yTolerance);
+
+    private native RectF nativeGetCharBox(long textPagePtr, int charIndex);
+
     /* synchronize native methods */
     private static final Object lock = new Object();
     private static Field mFdField = null;
@@ -359,6 +372,11 @@ public class PdfiumCore {
      */
     public void closeDocument(PdfDocument doc) {
         synchronized (lock) {
+            for (Integer index : doc.mNativeTextPagesPtr.keySet()) {
+                nativeCloseTextPage(doc.mNativeTextPagesPtr.get(index));
+            }
+            doc.mNativeTextPagesPtr.clear();
+
             for (Integer index : doc.mNativePagesPtr.keySet()) {
                 nativeClosePage(doc.mNativeDocPtr, doc.mNativePagesPtr.get(index));
             }
@@ -527,5 +545,90 @@ public class PdfiumCore {
         Point rightBottom = mapPageCoordsToDevice(doc, pageIndex, startX, startY, sizeX, sizeY, rotate,
                 coords.right, coords.bottom);
         return new RectF(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
+    }
+
+    /**
+     * Open and cache text page for a previously opened page.
+     */
+    public long openTextPage(PdfDocument doc, int pageIndex) {
+        synchronized (lock) {
+            Long cached = doc.mNativeTextPagesPtr.get(pageIndex);
+            if (cached != null) {
+                return cached;
+            }
+            Long pagePtr = doc.mNativePagesPtr.get(pageIndex);
+            if (pagePtr == null) {
+                throw new IllegalStateException("Page is not opened: " + pageIndex);
+            }
+            long textPagePtr = nativeLoadTextPage(pagePtr);
+            doc.mNativeTextPagesPtr.put(pageIndex, textPagePtr);
+            return textPagePtr;
+        }
+    }
+
+    /**
+     * Close text page if it was opened explicitly.
+     */
+    public void closeTextPage(PdfDocument doc, int pageIndex) {
+        synchronized (lock) {
+            Long textPagePtr = doc.mNativeTextPagesPtr.remove(pageIndex);
+            if (textPagePtr != null) {
+                nativeCloseTextPage(textPagePtr);
+            }
+        }
+    }
+
+    /**
+     * Count all selectable characters on a page.
+     */
+    public int getPageTextCount(PdfDocument doc, int pageIndex) {
+        synchronized (lock) {
+            return nativeGetPageTextCount(openTextPage(doc, pageIndex));
+        }
+    }
+
+    /**
+     * Read full page text.
+     */
+    public String getPageText(PdfDocument doc, int pageIndex) {
+        synchronized (lock) {
+            long textPagePtr = openTextPage(doc, pageIndex);
+            int textCount = nativeGetPageTextCount(textPagePtr);
+            if (textCount <= 0) {
+                return "";
+            }
+            return nativeGetPageText(textPagePtr, 0, textCount);
+        }
+    }
+
+    /**
+     * Read a text segment from page by character range.
+     */
+    public String getPageText(PdfDocument doc, int pageIndex, int startIndex, int count) {
+        synchronized (lock) {
+            if (count <= 0) {
+                return "";
+            }
+            return nativeGetPageText(openTextPage(doc, pageIndex), startIndex, count);
+        }
+    }
+
+    /**
+     * Hit-test page coordinates to a character index.
+     */
+    public int getCharIndexAtCoord(PdfDocument doc, int pageIndex, double pageX, double pageY,
+                                   double xTolerance, double yTolerance) {
+        synchronized (lock) {
+            return nativeGetCharIndexAtCoord(openTextPage(doc, pageIndex), pageX, pageY, xTolerance, yTolerance);
+        }
+    }
+
+    /**
+     * Get bounding box for one character in page coordinates.
+     */
+    public RectF getCharBox(PdfDocument doc, int pageIndex, int charIndex) {
+        synchronized (lock) {
+            return nativeGetCharBox(openTextPage(doc, pageIndex), charIndex);
+        }
     }
 }

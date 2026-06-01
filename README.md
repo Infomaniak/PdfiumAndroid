@@ -108,6 +108,25 @@ public void printInfo(PdfiumCore core, PdfDocument doc) {
 
 }
 
+
+## Text selection support
+The library now exposes text-page APIs that can be used by a viewer to implement text selection:
+
+- `PdfiumCore#getPageTextCount(PdfDocument, int)`
+- `PdfiumCore#getPageText(PdfDocument, int)`
+- `PdfiumCore#getPageText(PdfDocument, int, int, int)`
+- `PdfiumCore#getCharIndexAtCoord(PdfDocument, int, double, double, double, double)`
+- `PdfiumCore#getCharBox(PdfDocument, int, int)`
+
+Typical flow:
+
+1. `openPage(document, pageIndex)`
+2. Use `getCharIndexAtCoord(...)` on touch down / move to find selection boundaries.
+3. Use `getPageText(..., start, count)` to extract selected text.
+4. Use `getCharBox(...)` to draw visual selection highlights.
+
+Text pages are cached internally and released when `closeDocument(...)` is called.
+
 public void printBookmarksTree(List<PdfDocument.Bookmark> tree, String sep) {
     for (PdfDocument.Bookmark b : tree) {
 
