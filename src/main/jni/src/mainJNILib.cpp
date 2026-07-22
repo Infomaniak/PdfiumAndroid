@@ -809,6 +809,9 @@ JNI_FUNC(void, PdfiumCore, nativeCloseTextPage)(JNI_ARGS, jlong textPagePtr) {
 }
 
 JNI_FUNC(jint, PdfiumCore, nativeGetPageTextCount)(JNI_ARGS, jlong textPagePtr) {
+    if (textPagePtr == 0) {
+        return;
+    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL) {
         return 0;
@@ -817,6 +820,9 @@ JNI_FUNC(jint, PdfiumCore, nativeGetPageTextCount)(JNI_ARGS, jlong textPagePtr) 
 }
 
 JNI_FUNC(jstring, PdfiumCore, nativeGetPageText)(JNI_ARGS, jlong textPagePtr, jint startIndex, jint count) {
+    if (textPagePtr == 0) {
+        return;
+    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL || count <= 0) {
         return env->NewStringUTF("");
@@ -837,6 +843,9 @@ JNI_FUNC(jstring, PdfiumCore, nativeGetPageText)(JNI_ARGS, jlong textPagePtr, ji
 
 JNI_FUNC(jint, PdfiumCore, nativeGetCharIndexAtCoord)(JNI_ARGS, jlong textPagePtr, jdouble pageX, jdouble pageY,
                                                       jdouble xTolerance, jdouble yTolerance) {
+    if (textPagePtr == 0) {
+        return;
+    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL) {
         return -1;
@@ -845,6 +854,9 @@ JNI_FUNC(jint, PdfiumCore, nativeGetCharIndexAtCoord)(JNI_ARGS, jlong textPagePt
 }
 
 JNI_FUNC(jobject, PdfiumCore, nativeGetCharBox)(JNI_ARGS, jlong textPagePtr, jint charIndex) {
+    if (textPagePtr == 0) {
+        return;
+    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL) {
         return NULL;
