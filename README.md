@@ -18,9 +18,9 @@ Link to the [changelog](https://github.com/Infomaniak/PdfiumAndroid/blob/master/
 ## Installation
 Add to _build.gradle_:
 
-`compile 'com.github.mhiew:pdfium-android:1.9.2'`
+`implementation("com.infomaniak:pdfiumandroid:1.9.12")`
 
-Library is available in jcenter and Maven Central repositories.
+Library is available in Maven Central repositories.
 
 ## Methods inconsistency
 Version 1.8.0 added method for getting page size - `PdfiumCore#getPageSize(...)`.
