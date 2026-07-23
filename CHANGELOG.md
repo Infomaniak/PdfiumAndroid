@@ -1,3 +1,7 @@
+## What's new in 1.9.12
+* Add text selection/extraction API (load/close text page, get text count/content, hit-test char index, and get char bounding boxes)
+* Bump compileSdk/targetSdk to 37
+
 ## What's new in 1.9.11
 * Display forms in the PDF document
 
