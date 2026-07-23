@@ -2,8 +2,8 @@ buildscript {
 
     extra.apply {
         set("libMinSdk", 21)
-        set("libCompileSdk", 34)
-        set("libTargetSdk", 34)
+        set("libCompileSdk", 37)
+        set("libTargetSdk", 37)
 
         set("libGroupId", "com.github.infomaniak")
         set("libVersionName", "1.9.11")
