@@ -20,7 +20,7 @@ Add to _build.gradle_:
 
 `implementation("com.infomaniak:pdfiumandroid:1.9.12")`
 
-Library is available in Maven Central repositories.
+Library is available in our [Reposilite Maven repository](https://maven.infomaniak.app/#/releases/com/infomaniak/pdfiumandroid).
 
 ## Methods inconsistency
 Version 1.8.0 added method for getting page size - `PdfiumCore#getPageSize(...)`.
