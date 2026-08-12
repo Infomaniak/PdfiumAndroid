@@ -15,8 +15,6 @@ buildscript {
 
 plugins {
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.nmcp)
-    alias(libs.plugins.nmcp.aggregation)
     id("maven-publish")
     id("signing")
 }
@@ -84,19 +82,11 @@ repositories {
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation(libs.collection)
-    nmcpAggregation(project(":"))
 }
 
-nmcpAggregation {
-    centralPortal {
-        username = providers.gradleProperty("ossrhUsername")
-            .orElse(providers.environmentVariable("ossrhUsername"))
-            .orNull
-        password = providers.gradleProperty("ossrhPassword")
-            .orElse(providers.environmentVariable("ossrhPassword"))
-            .orNull
-        publishingType = "AUTOMATIC"
-    }
+fun getPropertyValue(propertyName: String): String? {
+    if (project.hasProperty(propertyName)) return project.property(propertyName) as String
+    return System.getenv(propertyName)
 }
 
 afterEvaluate {
@@ -133,6 +123,23 @@ afterEvaluate {
                 }
             }
         }
+
+        repositories {
+            maven {
+                name = "reposilite"
+                url = uri(
+                    if (libVersionName.endsWith("SNAPSHOT")) {
+                        "https://maven.infomaniak.app/snapshots"
+                    } else {
+                        "https://maven.infomaniak.app/releases"
+                    }
+                )
+                credentials {
+                    username = getPropertyValue("reposiliteUsername")
+                    password = getPropertyValue("reposilitePassword")
+                }
+            }
+        }
     }
 }
 
@@ -147,13 +154,13 @@ val gpgPassword = providers.gradleProperty("GPG_private_password")
     .orNull
 
 signing {
-    val isCentralPublishTask = gradle.startParameter.taskNames.any {
-        it.contains("CentralPortal") || it.contains("CentralSnapshots")
+    val isReposilitePublishTask = gradle.startParameter.taskNames.any {
+        it.contains("PublishToReposiliteRepository")
     }
     if (gpgKeyId != null && gpgPrivateKey != null && gpgPassword != null) {
         useInMemoryPgpKeys(gpgKeyId, gpgPrivateKey.replace('#', '\n'), gpgPassword)
         sign(publishing.publications)
-    } else if (isCentralPublishTask) {
+    } else if (isReposilitePublishTask) {
         error("Missing signing secrets: GPG_key_id, GPG_private_key, GPG_private_password")
     }
 }
