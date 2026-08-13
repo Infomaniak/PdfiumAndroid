@@ -1,4 +1,4 @@
-name: Publish to Reposilite Snapshots
+name: Publish to Maven Central Snapshots
 
 on:
   workflow_dispatch:
@@ -32,11 +32,11 @@ jobs:
         run: ./gradlew clean
 
       - name: Publish snapshots
-        run: ./gradlew publishAllPublicationsToReposiliteRepository -Psnapshot
+        run: ./gradlew publishAggregationToCentralSnapshots -Psnapshot
 env:
   GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -Dfile.encoding=UTF-8"
-  reposiliteUsername: ${{ secrets.REPOSILITE_USERNAME }}
-  reposilitePassword: ${{ secrets.REPOSILITE_PASSWORD }}
+  ossrhUsername: ${{ secrets.SONATYPE_USERNAME }}
+  ossrhPassword: ${{ secrets.SONATYPE_PASSWORD }}
   GPG_key_id: ${{ secrets.GPG_KEY_ID }}
   GPG_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
   GPG_private_password: ${{ secrets.GPG_PRIVATE_PASSWORD }}
