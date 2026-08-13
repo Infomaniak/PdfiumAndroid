@@ -1,9 +1,12 @@
 [versions]
 agp = "8.13.0"
 collection = "1.6.0"
+nmcp = "1.6.1"
 
 [libraries]
 collection = { module = "androidx.collection:collection", version.ref = "collection" }
 
 [plugins]
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
+nmcp = { id = "com.gradleup.nmcp", version.ref = "nmcp" }
+nmcp-aggregation = { id = "com.gradleup.nmcp.aggregation", version.ref = "nmcp" }
