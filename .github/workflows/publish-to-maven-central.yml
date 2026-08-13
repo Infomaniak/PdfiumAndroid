@@ -16,7 +16,6 @@ on:
 permissions:
   contents: read
 
-
 jobs:
   build:
     runs-on: [ self-hosted, Android ]
