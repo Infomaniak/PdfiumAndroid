@@ -809,9 +809,6 @@ JNI_FUNC(void, PdfiumCore, nativeCloseTextPage)(JNI_ARGS, jlong textPagePtr) {
 }
 
 JNI_FUNC(jint, PdfiumCore, nativeGetPageTextCount)(JNI_ARGS, jlong textPagePtr) {
-    if (textPagePtr == 0) {
-        return;
-    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL) {
         return 0;
@@ -820,9 +817,6 @@ JNI_FUNC(jint, PdfiumCore, nativeGetPageTextCount)(JNI_ARGS, jlong textPagePtr) 
 }
 
 JNI_FUNC(jstring, PdfiumCore, nativeGetPageText)(JNI_ARGS, jlong textPagePtr, jint startIndex, jint count) {
-    if (textPagePtr == 0) {
-        return;
-    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL || count <= 0) {
         return env->NewStringUTF("");
@@ -843,9 +837,6 @@ JNI_FUNC(jstring, PdfiumCore, nativeGetPageText)(JNI_ARGS, jlong textPagePtr, ji
 
 JNI_FUNC(jint, PdfiumCore, nativeGetCharIndexAtCoord)(JNI_ARGS, jlong textPagePtr, jdouble pageX, jdouble pageY,
                                                       jdouble xTolerance, jdouble yTolerance) {
-    if (textPagePtr == 0) {
-        return;
-    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL) {
         return -1;
@@ -854,9 +845,6 @@ JNI_FUNC(jint, PdfiumCore, nativeGetCharIndexAtCoord)(JNI_ARGS, jlong textPagePt
 }
 
 JNI_FUNC(jobject, PdfiumCore, nativeGetCharBox)(JNI_ARGS, jlong textPagePtr, jint charIndex) {
-    if (textPagePtr == 0) {
-        return;
-    }
     FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
     if (textPage == NULL) {
         return NULL;
@@ -874,6 +862,90 @@ JNI_FUNC(jobject, PdfiumCore, nativeGetCharBox)(JNI_ARGS, jlong textPagePtr, jin
     jclass clazz = env->FindClass("android/graphics/RectF");
     jmethodID constructorID = env->GetMethodID(clazz, "<init>", "(FFFF)V");
     return env->NewObject(clazz, constructorID, (jfloat) left, (jfloat) top, (jfloat) right, (jfloat) bottom);
+}
+
+// Returns the matches as flattened (start character index, character count) pairs
+JNI_FUNC(jintArray, PdfiumCore, nativeSearchText)(JNI_ARGS, jlong textPagePtr, jstring findWhat, jint flags) {
+    FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
+    if (textPage == NULL || findWhat == NULL) {
+        return env->NewIntArray(0);
+    }
+
+    const jsize length = env->GetStringLength(findWhat);
+    if (length <= 0) {
+        return env->NewIntArray(0);
+    }
+
+    // FPDF_WIDESTRING must be NUL terminated, which is not the case of the Java string chars
+    std::vector<jchar> pattern((size_t) length + 1, 0);
+    env->GetStringRegion(findWhat, 0, length, pattern.data());
+    // PDFium reads only up to the first NUL. Reject embedded NUL to avoid
+    // searching a truncated prefix of the user query.
+    for (jsize i = 0; i < length; ++i) {
+        if (pattern[(size_t) i] == 0) {
+            return env->NewIntArray(0);
+        }
+    }
+
+    FPDF_SCHHANDLE search = FPDFText_FindStart(textPage, pattern.data(), (unsigned long) flags, 0);
+    if (search == NULL) {
+        return env->NewIntArray(0);
+    }
+
+    std::vector<jint> matches;
+    int previousStart = -1;
+    while (FPDFText_FindNext(search)) {
+        const int start = FPDFText_GetSchResultIndex(search);
+        const int count = FPDFText_GetSchCount(search);
+        // Matches are expected to move forward, never loop forever otherwise
+        if (start <= previousStart || count <= 0) {
+            break;
+        }
+        matches.push_back(start);
+        matches.push_back(count);
+        previousStart = start;
+    }
+    FPDFText_FindClose(search);
+
+    jintArray result = env->NewIntArray((jsize) matches.size());
+    if (result != NULL && !matches.empty()) {
+        env->SetIntArrayRegion(result, 0, (jsize) matches.size(), matches.data());
+    }
+    return result;
+}
+
+// Returns flattened (left, top, right, bottom) rectangles in page coordinates, one per line of text
+JNI_FUNC(jfloatArray, PdfiumCore, nativeGetTextRects)(JNI_ARGS, jlong textPagePtr, jint startIndex, jint count) {
+    FPDF_TEXTPAGE textPage = reinterpret_cast<FPDF_TEXTPAGE>(textPagePtr);
+    if (textPage == NULL || startIndex < 0 || count <= 0) {
+        return env->NewFloatArray(0);
+    }
+
+    const int rectCount = FPDFText_CountRects(textPage, startIndex, count);
+    if (rectCount <= 0) {
+        return env->NewFloatArray(0);
+    }
+
+    std::vector<jfloat> rects;
+    rects.reserve((size_t) rectCount * 4);
+    for (int i = 0; i < rectCount; i++) {
+        double left = 0;
+        double top = 0;
+        double right = 0;
+        double bottom = 0;
+        if (FPDFText_GetRect(textPage, i, &left, &top, &right, &bottom)) {
+            rects.push_back((jfloat) left);
+            rects.push_back((jfloat) top);
+            rects.push_back((jfloat) right);
+            rects.push_back((jfloat) bottom);
+        }
+    }
+
+    jfloatArray result = env->NewFloatArray((jsize) rects.size());
+    if (result != NULL && !rects.empty()) {
+        env->SetFloatArrayRegion(result, 0, (jsize) rects.size(), rects.data());
+    }
+    return result;
 }
 
 }//extern C

@@ -22,6 +22,7 @@ import android.os.ParcelFileDescriptor;
 import androidx.collection.ArrayMap;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -114,6 +115,66 @@ public class PdfDocument {
 
         public RectF getBounds() {
             return bounds;
+        }
+    }
+
+    /**
+     * Occurrence of a text found in a page, see {@link PdfiumCore#searchText(PdfDocument, int, String, int)}.
+     */
+    public static class SearchResult {
+        private final int pageIndex;
+        private final int startIndex;
+        private final int count;
+        private final List<RectF> rects;
+        private final List<RectF> relativeRects;
+
+        public SearchResult(int pageIndex, int startIndex, int count, List<RectF> rects, List<RectF> relativeRects) {
+            this.pageIndex = pageIndex;
+            this.startIndex = startIndex;
+            this.count = count;
+            this.rects = Collections.unmodifiableList(rects);
+            this.relativeRects = Collections.unmodifiableList(relativeRects);
+        }
+
+        /**
+         * Index of the page containing the match.
+         */
+        public int getPageIndex() {
+            return pageIndex;
+        }
+
+        /**
+         * Index of the first matching character in the page text. Same index as the one used by
+         * {@link PdfiumCore#getPageText(PdfDocument, int, int, int)} and
+         * {@link PdfiumCore#getCharBox(PdfDocument, int, int)}.
+         */
+        public int getStartIndex() {
+            return startIndex;
+        }
+
+        /**
+         * Number of matching characters.
+         */
+        public int getCount() {
+            return count;
+        }
+
+        /**
+         * Areas covered by the match, one per line of text, in page coordinates. They can be converted with
+         * {@link PdfiumCore#mapRectToDevice(PdfDocument, int, int, int, int, int, int, RectF)} to be highlighted.
+         */
+        public List<RectF> getRects() {
+            return rects;
+        }
+
+        /**
+         * Same areas as {@link #getRects()}, as fractions (between 0 and 1) of the width and height of the page as it is
+         * displayed, its rotation included. Multiplied by the size of the displayed page they give the areas to highlight, at
+         * any zoom, without the page having to be opened or the areas to be converted: the top is above the bottom, like in
+         * the coordinates of a screen.
+         */
+        public List<RectF> getRelativeRects() {
+            return relativeRects;
         }
     }
 

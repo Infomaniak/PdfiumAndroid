@@ -38,6 +38,24 @@ public class PdfiumCore {
     private static final Class FD_CLASS = FileDescriptor.class;
     private static final String FD_FIELD_NAME = "descriptor";
 
+    /**
+     * Search flag: only match the text with the same case. The case is ignored by default.
+     */
+    public static final int SEARCH_MATCH_CASE = 0x00000001;
+
+    /**
+     * Search flag: only match whole words. Parts of words are matched by default.
+     */
+    public static final int SEARCH_MATCH_WHOLE_WORD = 0x00000002;
+
+    /**
+     * Search flag: matches can overlap, the next one is looked for right after the start of the current one instead
+     * of right after its end. Searching "aa" in "aaa" finds 2 matches instead of 1.
+     */
+    public static final int SEARCH_CONSECUTIVE = 0x00000004;
+
+    private static final int RELATIVE_RECT_UNIT = 10_000;
+
     static {
         try {
             System.loadLibrary("modpng");
@@ -123,6 +141,10 @@ public class PdfiumCore {
                                                  double xTolerance, double yTolerance);
 
     private native RectF nativeGetCharBox(long textPagePtr, int charIndex);
+
+    private native int[] nativeSearchText(long textPagePtr, String findWhat, int flags);
+
+    private native float[] nativeGetTextRects(long textPagePtr, int startIndex, int count);
 
     /* synchronize native methods */
     private static final Object lock = new Object();
@@ -630,5 +652,125 @@ public class PdfiumCore {
         synchronized (lock) {
             return nativeGetCharBox(openTextPage(doc, pageIndex), charIndex);
         }
+    }
+
+    /**
+     * Get the areas covering a range of characters, to highlight a selection for instance.
+     * Characters on the same line are merged in a single rectangle, which is lighter than calling
+     * {@link #getCharBox(PdfDocument, int, int)} for each character. <br>
+     * This method requires page to be opened.
+     *
+     * @return Rectangles in page coordinates, like {@link #getCharBox(PdfDocument, int, int)}. Use
+     * {@link #mapRectToDevice(PdfDocument, int, int, int, int, int, int, RectF)} to convert them.
+     */
+    public List<RectF> getTextRects(PdfDocument doc, int pageIndex, int startIndex, int count) {
+        synchronized (lock) {
+            if (count <= 0) {
+                return new ArrayList<>();
+            }
+            return toRectList(nativeGetTextRects(openTextPage(doc, pageIndex), startIndex, count));
+        }
+    }
+
+    /**
+     * Search a text in a page. <br>
+     * The page doesn't have to be opened: if it isn't, it is opened for the time of the search and closed right
+     * after, so a whole document can be searched page by page without keeping all the pages in memory. Like the
+     * other methods, it locks the library while it runs so call it from a background thread.
+     *
+     * @param query Text to search, the words it is made of (separated by spaces) have to follow each other.
+     * @param flags Combination of {@link #SEARCH_MATCH_CASE}, {@link #SEARCH_MATCH_WHOLE_WORD} and
+     *              {@link #SEARCH_CONSECUTIVE}, or 0 to ignore the case and match parts of words.
+     * @return The matches in reading order. Empty if there is none or if the query is empty.
+     * @throws IllegalStateException if the page can't be loaded, if the index is not valid for instance.
+     */
+    public List<PdfDocument.SearchResult> searchText(PdfDocument doc, int pageIndex, String query, int flags) {
+        List<PdfDocument.SearchResult> results = new ArrayList<>();
+        if (query == null || query.isEmpty()) {
+            return results;
+        }
+
+        synchronized (lock) {
+            Long openedPagePtr = doc.mNativePagesPtr.get(pageIndex);
+            boolean pageOpenedHere = openedPagePtr == null;
+            long pagePtr;
+            if (pageOpenedHere) {
+                pagePtr = nativeLoadPage(doc.mNativeDocPtr, pageIndex);
+            } else {
+                pagePtr = openedPagePtr;
+            }
+
+            try {
+                Long openedTextPagePtr = doc.mNativeTextPagesPtr.get(pageIndex);
+                boolean textPageOpenedHere = openedTextPagePtr == null;
+                long textPagePtr;
+                if (textPageOpenedHere) {
+                    textPagePtr = nativeLoadTextPage(pagePtr);
+                } else {
+                    textPagePtr = openedTextPagePtr;
+                }
+
+                try {
+                    int[] matches = nativeSearchText(textPagePtr, query, flags);
+                    if (matches != null) {
+                        // Matches are (start index, character count) pairs
+                        for (int i = 0; i + 1 < matches.length; i += 2) {
+                            List<RectF> rects = toRectList(nativeGetTextRects(textPagePtr, matches[i], matches[i + 1]));
+                            results.add(new PdfDocument.SearchResult(pageIndex, matches[i], matches[i + 1], rects,
+                                    toRelativeRects(pagePtr, rects)));
+                        }
+                    }
+                } finally {
+                    if (textPageOpenedHere) {
+                        nativeCloseTextPage(textPagePtr);
+                    }
+                }
+            } finally {
+                if (pageOpenedHere) {
+                    nativeClosePage(doc.mNativeDocPtr, pagePtr);
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Search a text in a page, ignoring the case and matching parts of words.
+     *
+     * @see #searchText(PdfDocument, int, String, int)
+     */
+    public List<PdfDocument.SearchResult> searchText(PdfDocument doc, int pageIndex, String query) {
+        return searchText(doc, pageIndex, query, 0);
+    }
+
+    /**
+     * Converts areas in page coordinates to fractions of the displayed page. The page has to be opened.
+     */
+    private List<RectF> toRelativeRects(long pagePtr, List<RectF> rects) {
+        List<RectF> relativeRects = new ArrayList<>(rects.size());
+        for (RectF rect : rects) {
+            // The page is mapped on a square of RELATIVE_RECT_UNIT pixels, which is the precision of the fractions
+            Point topLeft = nativePageCoordsToDevice(pagePtr, 0, 0, RELATIVE_RECT_UNIT, RELATIVE_RECT_UNIT, 0,
+                    rect.left, rect.top);
+            Point bottomRight = nativePageCoordsToDevice(pagePtr, 0, 0, RELATIVE_RECT_UNIT, RELATIVE_RECT_UNIT, 0,
+                    rect.right, rect.bottom);
+            RectF mapped = new RectF(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+            // The corners are swapped on the pages that are rotated
+            mapped.sort();
+            relativeRects.add(new RectF(mapped.left / RELATIVE_RECT_UNIT, mapped.top / RELATIVE_RECT_UNIT,
+                    mapped.right / RELATIVE_RECT_UNIT, mapped.bottom / RELATIVE_RECT_UNIT));
+        }
+        return relativeRects;
+    }
+
+    private static List<RectF> toRectList(float[] values) {
+        List<RectF> rects = new ArrayList<>();
+        if (values != null) {
+            // Rectangles are (left, top, right, bottom) quadruplets
+            for (int i = 0; i + 3 < values.length; i += 4) {
+                rects.add(new RectF(values[i], values[i + 1], values[i + 2], values[i + 3]));
+            }
+        }
+        return rects;
     }
 }
