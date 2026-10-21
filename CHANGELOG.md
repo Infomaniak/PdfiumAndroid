@@ -1,3 +1,6 @@
+## What's new in 1.9.13
+* Add text search API for PDF pages
+
 ## What's new in 1.9.12
 * Add text selection/extraction API (load/close text page, get text count/content, hit-test char index, and get char bounding boxes)
 * Bump compileSdk/targetSdk to 37

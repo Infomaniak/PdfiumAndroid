@@ -18,7 +18,7 @@ Link to the [changelog](https://github.com/Infomaniak/PdfiumAndroid/blob/master/
 ## Installation
 Add to _build.gradle_:
 
-`implementation("com.infomaniak:pdfiumandroid:1.9.12")`
+`implementation("com.infomaniak:pdfiumandroid:1.9.13")`
 
 Library is available in our [Reposilite Maven repository](https://maven.infomaniak.app/#/releases/com/infomaniak/pdfiumandroid).
 
