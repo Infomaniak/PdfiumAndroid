@@ -108,25 +108,6 @@ public void printInfo(PdfiumCore core, PdfDocument doc) {
 
 }
 
-
-## Text selection support
-The library now exposes text-page APIs that can be used by a viewer to implement text selection:
-
-- `PdfiumCore#getPageTextCount(PdfDocument, int)`
-- `PdfiumCore#getPageText(PdfDocument, int)`
-- `PdfiumCore#getPageText(PdfDocument, int, int, int)`
-- `PdfiumCore#getCharIndexAtCoord(PdfDocument, int, double, double, double, double)`
-- `PdfiumCore#getCharBox(PdfDocument, int, int)`
-
-Typical flow:
-
-1. `openPage(document, pageIndex)`
-2. Use `getCharIndexAtCoord(...)` on touch down / move to find selection boundaries.
-3. Use `getPageText(..., start, count)` to extract selected text.
-4. Use `getCharBox(...)` to draw visual selection highlights.
-
-Text pages are cached internally and released when `closeDocument(...)` is called.
-
 public void printBookmarksTree(List<PdfDocument.Bookmark> tree, String sep) {
     for (PdfDocument.Bookmark b : tree) {
 
@@ -139,6 +120,77 @@ public void printBookmarksTree(List<PdfDocument.Bookmark> tree, String sep) {
 }
 
 ```
+
+## Text selection support
+The library now exposes text-page APIs that can be used by a viewer to implement text selection:
+
+- `PdfiumCore#getPageTextCount(PdfDocument, int)`
+- `PdfiumCore#getPageText(PdfDocument, int)`
+- `PdfiumCore#getPageText(PdfDocument, int, int, int)`
+- `PdfiumCore#getCharIndexAtCoord(PdfDocument, int, double, double, double, double)`
+- `PdfiumCore#getCharBox(PdfDocument, int, int)`
+- `PdfiumCore#getTextRects(PdfDocument, int, int, int)`
+
+Typical flow:
+
+1. `openPage(document, pageIndex)`
+2. Use `getCharIndexAtCoord(...)` on touch down / move to find selection boundaries.
+3. Use `getPageText(..., start, count)` to extract selected text.
+4. Use `getTextRects(..., start, count)` to draw visual selection highlights (one rectangle per line of text), or `getCharBox(...)` for a single character.
+
+Text pages are cached internally and released when `closeDocument(...)` is called.
+
+## Text search support
+`PdfiumCore#searchText(PdfDocument, int, String)` (or the variant taking flags) searches a text in one page and returns
+the matches in reading order as `PdfDocument.SearchResult`:
+
+- `getPageIndex()`: the page containing the match.
+- `getStartIndex()` and `getCount()`: the matching characters, with the same indexes as `getPageText(...)` and `getCharBox(...)`.
+- `getRects()`: the areas to highlight (one per line of text) in page coordinates.
+- `getRelativeRects()`: the same areas as fractions (between 0 and 1) of the width and height of the displayed page.
+
+By default the search ignores the case and matches parts of words. The flags `PdfiumCore.SEARCH_MATCH_CASE`,
+`PdfiumCore.SEARCH_MATCH_WHOLE_WORD` and `PdfiumCore.SEARCH_CONSECUTIVE` (overlapping matches) can be combined.
+The words of a query can be spread over several lines.
+
+The page doesn't have to be opened: if it isn't, it is opened and closed again by the search, so a whole document can be
+searched without keeping every page in memory. The library is locked while a page is searched, so search page by page
+from a background thread:
+
+``` java
+List<PdfDocument.SearchResult> results = new ArrayList<>();
+for (int pageIndex = 0; pageIndex < pdfiumCore.getPageCount(pdfDocument); pageIndex++) {
+    results.addAll(pdfiumCore.searchText(pdfDocument, pageIndex, "invoice"));
+}
+```
+
+To highlight a match on a page, multiply its relative areas by the size of the displayed page. The page doesn't have to
+be opened, and the areas stay valid whatever the zoom is:
+
+``` java
+for (RectF area : result.getRelativeRects()) {
+    canvas.drawRect(area.left * pageWidthPx, area.top * pageHeightPx,
+            area.right * pageWidthPx, area.bottom * pageHeightPx, highlightPaint);
+}
+```
+
+The areas in page coordinates can also be converted to device coordinates, on a displayed page (opened with `openPage`):
+
+``` java
+for (RectF pageRect : result.getRects()) {
+    RectF deviceRect = pdfiumCore.mapRectToDevice(pdfDocument, result.getPageIndex(),
+            0, 0, pageWidthPx, pageHeightPx, 0, pageRect);
+    canvas.drawRect(deviceRect, highlightPaint);
+}
+```
+
+Known limitations:
+
+- Only the text layer is searched, a scanned page without text has no result.
+- Accents are not ignored: `eleve` doesn't match `élève`.
+- A word hyphenated at the end of a line is not matched as a whole.
+- On a rotated page `mapRectToDevice(...)` can return a rectangle that isn't sorted (`left > right`), call `RectF#sort()` before using `contains(...)`.
+
 ## Build native part
 Go to `PROJECT_PATH/src/main/jni` and run command `$ ndk-build`.
 This step may be executed only once, every future `.aar` build will use generated libs.
